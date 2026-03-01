@@ -1,249 +1,120 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  BookOpen, Moon, Sun, Heart, Play, Pause, 
-  SkipForward, SkipBack, RefreshCw, Volume2, 
-  Home, Sparkles, ChevronRight, Menu, X, Share2, Radio
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Feedback Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .whatsapp-green {
+            background-color: #25D366;
+        }
+        .whatsapp-dark {
+            background-color: #075E54;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
 
-/**
- * Sadqa Jariyah Website - Dedicated to Hoda Rizk Farag
- */
-
-// --- DATA ---
-const RECITERS = [
-  { id: 1, name: "مشاري العفاسي", url: "https://server8.mp3quran.net/afs/001.mp3" },
-  { id: 2, name: "عبدالرحمن السديس", url: "https://server11.mp3quran.net/sds/001.mp3" },
-  { id: 3, name: "ماهر المعيقلي", url: "https://server12.mp3quran.net/maher/001.mp3" },
-  { id: 4, name: "سعد الغامدي", url: "https://server7.mp3quran.net/s_gmd/001.mp3" },
-  { id: 5, name: "عبدالباسط عبدالصمد", url: "https://server7.mp3quran.net/basit/001.mp3" },
-  { id: 6, name: "محمد صديق المنشاوي", url: "https://server10.mp3quran.net/minsh/001.mp3" },
-  { id: 7, name: "محمود خليل الحصري", url: "https://server13.mp3quran.net/husr/001.mp3" },
-  { id: 8, name: "ياسر الدوسري", url: "https://server11.mp3quran.net/yasser/001.mp3" },
-  { id: 9, name: "أحمد العجمي", url: "https://server10.mp3quran.net/ajm/001.mp3" }
-];
-
-const RUQYAH_LIST = [
-  { title: "سورة الفاتحة", text: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ... صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ", note: "الرقية الأساسية" },
-  { title: "آية الكرسي", text: "اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...", note: "حماية وحفظ" },
-  { title: "المعوذات", text: "سورة الإخلاص، الفلق، والناس", note: "تحصين من كل شر" },
-  { title: "خواتيم البقرة", text: "آمَنَ الرَّسُولُ بِمَا أُنْزِلَ إِلَيْهِ مِنْ رَبِّهِ والمؤمنون...", note: "كفاية من كل سوء" },
-  { title: "أدعية الشفاء", text: "أذهب البأس رب الناس، اشف وأنت الشافي...", note: "دعاء نبوي" },
-  { title: "بسم الله أرقيك", text: "بسم الله أرقيك من كل شيء يؤذيك...", note: "تحصين للنفس" }
-];
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  const navigate = (tab) => {
-    setActiveTab(tab);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-[#fffdf5] text-slate-800'}`} dir="rtl">
-      
-      {/* Header Tools */}
-      <div className="fixed top-4 left-4 z-50 flex flex-col gap-3">
-        <button 
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className={`p-3 rounded-full shadow-lg backdrop-blur-md transition-all ${isDarkMode ? 'bg-emerald-500 text-white' : 'bg-white text-emerald-600 border border-emerald-100'}`}
-        >
-          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-        <button className="p-3 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition-all">
-          <Share2 size={20} />
-        </button>
-      </div>
-
-      {/* Floating Home Button (Visible when not on home) */}
-      {activeTab !== 'home' && (
-        <button 
-          onClick={() => navigate('home')}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-full shadow-2xl hover:bg-emerald-700 hover:scale-105 transition-all"
-        >
-          <Home size={20} />
-          <span className="font-bold">الرئيسية</span>
-        </button>
-      )}
-
-      {/* Main Container */}
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {activeTab === 'home' ? (
-          <HomeScreen onNavigate={navigate} isDarkMode={isDarkMode} />
-        ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <header className="text-center mb-10">
-                <button 
-                  onClick={() => navigate('home')}
-                  className="mb-4 inline-flex items-center gap-2 text-emerald-600 font-bold hover:underline"
-                >
-                  <Home size={16} /> العودة للرئيسية
-                </button>
-                <h2 className="text-3xl font-bold border-b-2 border-emerald-500 inline-block pb-2">
-                  {activeTab === 'quran' && 'المصحف المرتل'}
-                  {activeTab === 'ruqyah' && 'الرقية الشرعية'}
-                  {activeTab === 'tasbih' && 'السبحة الإلكترونية'}
-                  {activeTab === 'azkar' && 'أذكار المسلم'}
-                </h2>
-             </header>
-             
-             {activeTab === 'quran' && <QuranView />}
-             {activeTab === 'ruqyah' && <RuqyahView />}
-             {activeTab === 'tasbih' && <TasbihView />}
-             {activeTab === 'azkar' && <AzkarView />}
-          </div>
-        )}
-      </div>
-
-      <footer className="text-center py-10 opacity-60 text-sm italic">
-        اللهم اجعل هذا العمل في ميزان حسنات الفقيدة والمسلمين أجمعين
-      </footer>
-    </div>
-  );
-}
-
-// --- VIEWS ---
-
-function HomeScreen({ onNavigate, isDarkMode }) {
-  return (
-    <div className="text-center space-y-12">
-      <div className="space-y-4">
-        <h1 className="text-4xl sm:text-6xl font-bold text-emerald-700 font-serif">موقع القرآن الكريم</h1>
-        <p className="text-emerald-600/80 font-medium">صدقة جارية عن روح المرحومة</p>
-        <div className="py-6">
-          <h2 className="text-3xl sm:text-5xl text-amber-600 font-bold tracking-tight">هدى رزق فرج</h2>
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="whatsapp-dark p-6 text-white text-center">
+            <h1 class="text-2xl font-bold mb-2">WhatsApp Feedback Tool</h1>
+            <p class="text-sm opacity-90">  shady</p>
         </div>
-        <p className={`max-w-xl mx-auto leading-loose ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          عَنْ أَبِي هُرَيْرَةَ رضي الله تعالى عنه: أَنَّ رَسُولَ اللَّهِ ﷺ قَالَ: "إِذَا مَاتَ ابْنُ آدَمَ انْقَطَعَ عَمَلُهُ إِلَّا مِنْ ثَلَاثٍ: صَدَقَةٍ جَارِيَةٍ، أَوْ عِلْمٍ يُنتَفَعُ بِهِ، أَوْ وَلَدٍ صَالِحٍ يَدْعُو لَهُ".
-          <br/><span className="text-xs font-bold block mt-2">رواه مسلم</span>
-        </p>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MenuCard title="القرآن الكريم" icon="📖" color="bg-emerald-500" onClick={() => onNavigate('quran')} />
-        <MenuCard title="قراءة القرآن" icon="📜" color="bg-purple-500" onClick={() => onNavigate('quran')} />
-        <MenuCard title="الرقية الشرعية" icon="🛡️" color="bg-orange-500" onClick={() => onNavigate('ruqyah')} />
-        <MenuCard title="راديو القرآن" icon="📻" color="bg-teal-500" onClick={() => onNavigate('quran')} />
-        <MenuCard title="السبحة الإلكترونية" icon="📿" color="bg-amber-500" onClick={() => onNavigate('tasbih')} />
-        <MenuCard title="أذكار المسلم" icon="☀️" color="bg-blue-500" onClick={() => onNavigate('azkar')} />
-      </div>
-    </div>
-  );
-}
+        <div class="p-6 space-y-6">
+            <!-- Message Input -->
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">نص الرسالة (الفيدباك):</label>
+                <textarea id="feedbackMessage" rows="4" 
+                    class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-all"
+                    placeholder="اكتب هنا الرسالة التي تريد إرسالها للجميع..."></textarea>
+            </div>
 
-function MenuCard({ title, icon, color, onClick }) {
-  return (
-    <button 
-      onClick={onClick}
-      className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col items-center gap-4 group"
-    >
-      <div className={`w-16 h-16 ${color} text-white rounded-2xl flex items-center justify-center text-3xl shadow-lg group-hover:scale-110 transition-transform`}>
-        {icon}
-      </div>
-      <span className="font-bold text-slate-700">{title}</span>
-    </button>
-  );
-}
+            <!-- Numbers Input -->
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">أرقام الهواتف (رقم في كل سطر):</label>
+                <p class="text-xs text-gray-500 mb-2">* تأكد من إضافة كود الدولة (مثلاً: 968...)</p>
+                <textarea id="phoneNumbers" rows="6" 
+                    class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-all font-mono"
+                    placeholder="968000000000&#10;968111111111&#10;9668222222222"></textarea>
+            </div>
 
-function QuranView() {
-  const [currentReciter, setCurrentReciter] = useState(RECITERS[0]);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef(null);
+            <!-- Generate Button -->
+            <button onclick="generateList()" 
+                class="w-full whatsapp-green hover:bg-green-600 text-white font-bold py-3 rounded-lg shadow-lg transform transition active:scale-95">
+                تحديث قائمة الإرسال
+            </button>
 
-  const toggle = () => {
-    if (isPlaying) audioRef.current.pause();
-    else audioRef.current.play();
-    setIsPlaying(!isPlaying);
-  };
-
-  return (
-    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-50 flex flex-col items-center">
-      <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-6">
-        <Radio size={48} />
-      </div>
-      <select 
-        className="w-full max-w-md p-4 rounded-xl border-2 border-slate-100 bg-slate-50 font-bold mb-8 text-center outline-none focus:border-emerald-500"
-        onChange={(e) => {
-          const r = RECITERS.find(rec => rec.id === parseInt(e.target.value));
-          setCurrentReciter(r);
-          setIsPlaying(false);
-        }}
-      >
-        {RECITERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-      </select>
-      
-      <div className="flex items-center gap-8 mb-8">
-        <button className="text-slate-300 hover:text-emerald-600"><SkipBack size={40} /></button>
-        <button 
-          onClick={toggle}
-          className="w-20 h-20 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all"
-        >
-          {isPlaying ? <Pause size={40} fill="white" /> : <Play size={40} fill="white" className="mr-1" />}
-        </button>
-        <button className="text-slate-300 hover:text-emerald-600"><SkipForward size={40} /></button>
-      </div>
-
-      <audio ref={audioRef} src={currentReciter.url} onEnded={() => setIsPlaying(false)} />
-      <p className="font-bold text-emerald-600">جاري الاستماع لـ: {currentReciter.name}</p>
-    </div>
-  );
-}
-
-function RuqyahView() {
-  return (
-    <div className="grid gap-6">
-      {RUQYAH_LIST.map((r, i) => (
-        <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border-r-4 border-orange-500 hover:shadow-md transition-all">
-          <h3 className="font-bold text-xl text-orange-600 mb-2">{r.title}</h3>
-          <p className="text-xl leading-relaxed font-serif text-slate-700 mb-4">{r.text}</p>
-          <div className="text-xs bg-orange-50 text-orange-800 px-3 py-1 rounded-full inline-block font-bold">
-            💡 {r.note}
-          </div>
+            <!-- Results Section -->
+            <div id="resultContainer" class="hidden space-y-4">
+                <hr class="my-6">
+                <h2 class="text-xl font-bold text-gray-800">قائمة الأرقام الجاهزة:</h2>
+                <div id="linksList" class="space-y-3">
+                    <!-- Links will be injected here -->
+                </div>
+            </div>
         </div>
-      ))}
     </div>
-  );
-}
 
-function TasbihView() {
-  const [count, setCount] = useState(0);
-  return (
-    <div className="flex flex-col items-center py-10">
-      <div 
-        onClick={() => setCount(count + 1)}
-        className="w-64 h-64 bg-white rounded-full shadow-2xl border-[12px] border-emerald-50 flex items-center justify-center cursor-pointer active:scale-95 transition-all mb-10 group"
-      >
-        <div className="text-center">
-          <span className="block text-7xl font-bold text-slate-800">{count}</span>
-          <span className="text-emerald-500 font-bold group-hover:animate-pulse">اضغط للتسبيح</span>
-        </div>
-      </div>
-      <button 
-        onClick={() => setCount(0)}
-        className="flex items-center gap-2 text-slate-400 hover:text-rose-500 transition-all"
-      >
-        <RefreshCw size={20} /> إعادة العداد
-      </button>
-    </div>
-  );
-}
+    <script>
+        function generateList() {
+            const message = encodeURIComponent(document.getElementById('feedbackMessage').value);
+            const numbersText = document.getElementById('phoneNumbers').value;
+            const container = document.getElementById('resultContainer');
+            const list = document.getElementById('linksList');
 
-function AzkarView() {
-  const azkar = [
-    { t: "سبحان الله وبحمده", c: 100 },
-    { t: "أستغفر الله وأتوب إليه", c: 100 },
-    { t: "لا إله إلا الله وحده لا شريك له", c: 10 },
-    { t: "اللهم صل وسلم على نبينا محمد", c: 10 }
-  ];
-  return (
-    <div className="space-y-4">
-      {azkar.map((z, i) => (
-        <div key={i} className="bg-white p-6 rounded-2xl flex justify-between items-center shadow-sm">
-          <span className="text-xl font-bold">{z.t}</span>
-          <span className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl font-bold">{z.c} مرات</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+            // Split numbers by new line and filter out empty lines
+            const numbers = numbersText.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+
+            if (numbers.length === 0) {
+                alert('يرجى إدخال رقم واحد على الأقل');
+                return;
+            }
+
+            // Clear previous list
+            list.innerHTML = '';
+            container.classList.remove('hidden');
+
+            numbers.forEach((num, index) => {
+                // Remove any non-numeric characters just in case
+                const cleanNum = num.replace(/\D/g, '');
+                const url = `https://wa.me/${cleanNum}?text=${message}`;
+
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md transition-all";
+                
+                item.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="text-sm text-gray-400">العميل #${index + 1}</span>
+                        <span class="font-bold text-gray-700">${num}</span>
+                    </div>
+                    <a href="${url}" target="_blank" 
+                       onclick="markAsSent(this)"
+                       class="whatsapp-green text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90">
+                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                       إرسال
+                    </a>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function markAsSent(element) {
+            // Change color to show it was clicked
+            element.classList.remove('whatsapp-green');
+            element.classList.add('bg-gray-400');
+            element.innerText = 'تم الإرسال ✓';
+            
+            // Optional: Move to next one automatically after a short delay
+            // (Doesn't work for opening tabs but helps visual tracking)
+        }
+    </script>
+</body>
+</html>
