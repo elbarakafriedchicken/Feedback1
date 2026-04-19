@@ -1,355 +1,656 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ShieldAlert, Play, Key, Activity, MessageSquare, Users, Rss, 
-  Link as LinkIcon, Menu, X, Copy, CheckCircle, AlertCircle, Check 
-} from 'lucide-react';
-
-// === بيانات الـ API المترجمة للواجهة ===
-const apiData = [
-  {
-    category: "إدارة الحساب",
-    icon: <Activity className="w-5 h-5" />,
-    endpoints: [
-      { path: "/qrpng", method: "GET", name: "استخراج رمز QR", desc: "تسجيل حساب جديد والحصول على رمز الاستجابة السريعة (QR) للمصادقة." },
-      { path: "/status", method: "GET", name: "حالة الحساب", desc: "التحقق من حالة اتصال الرقم الحالي." },
-      { path: "/sleep", method: "GET", name: "وضع السكون", desc: "إيقاف إرسال واستقبال الرسائل مؤقتاً." },
-      { path: "/resume", method: "GET", name: "استئناف العمل", desc: "إعادة تفعيل الحساب من وضع السكون." },
-      { path: "/kill", method: "GET", name: "تسجيل الخروج", desc: "إنهاء الجلسة وحذف بيانات المصادقة نهائياً." }
-    ]
-  },
-  {
-    category: "المراسلة",
-    icon: <MessageSquare className="w-5 h-5" />,
-    endpoints: [
-      { path: "/wspout", method: "POST", name: "إرسال رسالة فردية", desc: "إرسال رسالة إلى رقم واتساب محدد.", payloadExample: '{\n  "number": "34631428039",\n  "msg": {\n    "text": "مرحباً بالعالم!"\n  }\n}' },
-      { path: "/send2grp", method: "POST", name: "إرسال لمجموعة", desc: "إرسال رسالة إلى مجموعة محددة.", payloadExample: '{\n  "gid": "group-id",\n  "msg": {\n    "text": "مرحباً يا مجموعة!"\n  }\n}' },
-      { path: "/seturl", method: "POST", name: "تعيين Webhook", desc: "تعيين رابط لاستقبال التحديثات والرسائل الواردة.", payloadExample: '{\n  "url": "https://enter-your.destination.url"\n}' },
-      { path: "/geturl", method: "GET", name: "عرض الـ Webhook", desc: "استرجاع رابط الـ Webhook الحالي." },
-      { path: "/delurl", method: "GET", name: "حذف الـ Webhook", desc: "إزالة رابط الـ Webhook المعين." }
-    ]
-  },
-  {
-    category: "إدارة المجموعات",
-    icon: <Users className="w-5 h-5" />,
-    endpoints: [
-      { path: "/groups/create", method: "POST", name: "إنشاء مجموعة", desc: "إنشاء مجموعة واتساب جديدة.", payloadExample: '{\n  "name": "اسم المجموعة",\n  "participants": ["34631428104", "34645785851"]\n}' },
-      { path: "/groups/setpic", method: "POST", name: "تغيير الصورة", desc: "تغيير الصورة الشخصية للمجموعة.", payloadExample: '{\n  "gid": "valid-group-id",\n  "picurl": "https://example.com/image.jpg"\n}' },
-      { path: "/groups/setname", method: "POST", name: "تغيير الاسم", desc: "تعديل اسم المجموعة.", payloadExample: '{\n  "gid": "valid-group-id",\n  "name": "الاسم الجديد"\n}' },
-      { path: "/groups/settopic", method: "POST", name: "تغيير الوصف", desc: "تعديل وصف (موضوع) المجموعة.", payloadExample: '{\n  "gid": "valid-group-id",\n  "topic": "الوصف الجديد"\n}' },
-      { path: "/groups/getlink", method: "POST", name: "رابط الدعوة", desc: "الحصول على رابط الدعوة الخاص بالمجموعة.", payloadExample: '{\n  "gid": "valid-group-id"\n}' },
-      { path: "/groups/getinfo", method: "POST", name: "معلومات المجموعة", desc: "جلب معلومات المجموعة وقائمة الأعضاء.", payloadExample: '{\n  "gid": "valid-group-id"\n}' },
-      { path: "/groups/mygroups", method: "POST", name: "مجموعاتي", desc: "عرض جميع المجموعات التي يشترك بها الحساب." },
-      { path: "/groups/addmembers", method: "POST", name: "إضافة أعضاء", desc: "إضافة أشخاص جدد للمجموعة.", payloadExample: '{\n  "gid": "valid-group-id",\n  "participants": ["34631428104"]\n}' },
-      { path: "/groups/removemembers", method: "POST", name: "حذف أعضاء", desc: "إزالة أشخاص من المجموعة.", payloadExample: '{\n  "gid": "valid-group-id",\n  "participants": ["34631428104"]\n}' },
-      { path: "/groups/promotemembers", method: "POST", name: "ترقية لمشرف", desc: "ترقية عضو ليصبح مشرفاً (Admin).", payloadExample: '{\n  "gid": "valid-group-id",\n  "participants": ["34631428104"]\n}' },
-      { path: "/groups/demotemembers", method: "POST", name: "إزالة من الإشراف", desc: "تنزيل مشرف ليصبح عضواً عادياً.", payloadExample: '{\n  "gid": "valid-group-id",\n  "participants": ["34631428104"]\n}' },
-      { path: "/groups/leave", method: "POST", name: "مغادرة المجموعة", desc: "الخروج من المجموعة.", payloadExample: '{\n  "gid": "valid-group-id"\n}' }
-    ]
-  },
-  {
-    category: "قنوات واتساب",
-    icon: <Rss className="w-5 h-5" />,
-    endpoints: [
-      { path: "/sendnews", method: "POST", name: "إرسال نشرة", desc: "إرسال رسالة أو نشرة في القناة.", payloadExample: '{\n  "text": "مرحباً، هذه أول نشرة لي.",\n  "nid": "ENTER_CHANNEL_ID_HERE"\n}' },
-      { path: "/channelcreate", method: "POST", name: "إنشاء قناة", desc: "إنشاء قناة واتساب جديدة.", payloadExample: '{\n  "name": "mywhatsappchannel",\n  "description": "وصف القناة الجديدة"\n}' },
-      { path: "/chlist", method: "GET", name: "قائمة القنوات", desc: "عرض جميع القنوات الخاصة بك." }
-    ]
-  },
-  {
-    category: "الروابط الخاصة",
-    icon: <LinkIcon className="w-5 h-5" />,
-    endpoints: [
-      { path: "/webhk?origin=Cloudflare&destination=number_or_group", method: "GET", name: "رابط استماع خاص", desc: "الحصول على رابط (URL) لربطه بخدمات خارجية وإرسال رسائل تلقائية." }
-    ]
-  }
-];
-
-export default function App() {
-  const [activeCategory, setActiveCategory] = useState(apiData[0].category);
-  
-  // استرجاع المفتاح من التخزين المحلي لتسهيل الاستخدام
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('mywhin_api_key') || '');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [responses, setResponses] = useState({});
-  const [loadingStates, setLoadingStates] = useState({});
-  const [payloads, setPayloads] = useState({});
-  const [toast, setToast] = useState(null);
-  const [copiedPath, setCopiedPath] = useState(null);
-
-  // حفظ المفتاح السري تلقائياً عند تغييره
-  useEffect(() => {
-    localStorage.setItem('mywhin_api_key', apiKey);
-  }, [apiKey]);
-
-  const showToast = (msg, type = 'error') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleCopy = (path, text) => {
-    navigator.clipboard.writeText(text);
-    setCopiedPath(path);
-    setTimeout(() => setCopiedPath(null), 2000);
-  };
-
-  const handleTestApi = async (endpoint) => {
-    if (!apiKey.trim()) {
-      showToast("عفواً، يجب إدخال مفتاح RapidAPI أولاً في الأعلى!", "error");
-      return;
-    }
-
-    setLoadingStates(prev => ({ ...prev, [endpoint.path]: true }));
-    
-    const url = `https://mywhin.p.rapidapi.com${endpoint.path}`;
-    const options = {
-      method: endpoint.method,
-      headers: {
-        'x-rapidapi-key': apiKey.trim(),
-        'x-rapidapi-host': 'mywhin.p.rapidapi.com',
-        'Content-Type': 'application/json'
-      }
-    };
-
-    if (endpoint.method === 'POST') {
-      const body = payloads[endpoint.path] || endpoint.payloadExample;
-      if (body) {
-        try {
-          JSON.parse(body); // التحقق من صحة تنسيق الـ JSON
-          options.body = body;
-        } catch (e) {
-          showToast("يوجد خطأ في صيغة الـ JSON (Payload). تأكد من الأقواس وعلامات التنصيص.", "error");
-          setLoadingStates(prev => ({ ...prev, [endpoint.path]: false }));
-          return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Order Data Entry</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Arabic & English -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --ar-font: 'Cairo', sans-serif;
+            --en-font: 'Inter', sans-serif;
         }
-      }
-    }
-
-    try {
-      const res = await fetch(url, options);
-      const isJson = res.headers.get('content-type')?.includes('application/json');
-      const data = isJson ? await res.json() : await res.text();
-      
-      setResponses(prev => ({ 
-        ...prev, 
-        [endpoint.path]: {
-          data: typeof data === 'object' ? JSON.stringify(data, null, 2) : data,
-          status: res.status,
-          statusText: res.statusText || (res.ok ? 'OK' : 'Error'),
-          ok: res.ok
+        body {
+            background-color: #f3f4f6;
+            font-family: var(--en-font);
         }
-      }));
-      showToast("تمت العملية", "success");
-    } catch (error) {
-      setResponses(prev => ({ 
-        ...prev, 
-        [endpoint.path]: {
-          data: `فشل الاتصال الخادم: ${error.message}`,
-          status: 'Network Error',
-          ok: false
+        .rtl-container {
+            font-family: var(--ar-font);
+            direction: rtl;
         }
-      }));
-      showToast("حدث خطأ أثناء الاتصال", "error");
-    } finally {
-      setLoadingStates(prev => ({ ...prev, [endpoint.path]: false }));
-    }
-  };
-
-  const handlePayloadChange = (path, value) => {
-    setPayloads(prev => ({ ...prev, [path]: value }));
-  };
-
-  const activeData = apiData.find(d => d.category === activeCategory);
-
-  return (
-    <div className="flex h-screen bg-slate-50 text-slate-800 font-sans" dir="rtl">
-      
-      {/* نظام الإشعارات العائمة (Toast) */}
-      {toast && (
-        <div className={`fixed bottom-5 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 space-x-reverse z-50 text-white transition-all duration-300 ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
-          {toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
-          <span className="font-medium">{toast.msg}</span>
-        </div>
-      )}
-
-      {/* خلفية الشاشة للموبايل */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-slate-900 bg-opacity-50 z-20 md:hidden transition-opacity" onClick={() => setSidebarOpen(false)}></div>
-      )}
-
-      {/* القائمة الجانبية (Sidebar) */}
-      <div className={`fixed inset-y-0 right-0 transform ${sidebarOpen ? "translate-x-0" : "translate-x-full"} md:relative md:translate-x-0 w-72 bg-slate-900 text-slate-100 transition-transform duration-300 ease-in-out z-30 flex flex-col shadow-xl`}>
-        <div className="p-6 flex items-center justify-between border-b border-slate-800">
-          <div>
-            <h1 className="text-2xl font-bold text-emerald-400 tracking-tight">Mywhin API</h1>
-            <p className="text-xs text-slate-400 mt-1">لوحة تحكم المطورين</p>
-          </div>
-          <button className="md:hidden text-slate-400 hover:text-white transition" onClick={() => setSidebarOpen(false)}>
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+        .ltr-container {
+            font-family: var(--en-font);
+            direction: ltr;
+        }
         
-        <nav className="flex-1 overflow-y-auto py-6">
-          <ul className="space-y-2 px-4">
-            {apiData.map((item) => (
-              <li key={item.category}>
-                <button
-                  onClick={() => { setActiveCategory(item.category); setSidebarOpen(false); }}
-                  className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl text-right transition-all duration-200 ${
-                    activeCategory === item.category 
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-900/20" 
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
-                >
-                  {item.icon}
-                  <span className="font-medium">{item.category}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-      {/* المحتوى الرئيسي */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
-        
-        {/* الشريط العلوي (Top Header) */}
-        <header className="bg-white border-b border-slate-200 px-4 py-4 sm:px-8 flex items-center gap-4 shadow-sm z-10 sticky top-0">
-          <button className="md:hidden text-slate-500 hover:text-slate-800 p-1 rounded-md hover:bg-slate-100 transition" onClick={() => setSidebarOpen(true)}>
-            <Menu className="w-6 h-6" />
-          </button>
-          
-          <div className="flex-1 max-w-2xl flex items-center">
-            <div className="relative w-full group">
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <Key className={`h-5 w-5 transition-colors ${apiKey ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-emerald-500'}`} />
-              </div>
-              <input
-                type="password"
-                placeholder="أدخل مفتاح الـ RapidAPI هنا (سيتم حفظه بمتصفحك تلقائياً)..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="block w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white sm:text-sm transition-all shadow-inner"
-              />
-            </div>
-            {!apiKey && (
-              <div className="hidden sm:flex items-center mr-4 text-xs font-medium text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 shadow-sm whitespace-nowrap">
-                <ShieldAlert className="w-4 h-4 ml-1.5" /> مطلوب للتشغيل
-              </div>
-            )}
-          </div>
-        </header>
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-animate {
+            animation: slideIn 0.3s ease-out forwards;
+        }
 
-        {/* منطقة الـ Endpoints */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8">
-          <div className="max-w-4xl mx-auto space-y-8 pb-12">
-            
-            <div className="pb-2 border-b-2 border-slate-200">
-              <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">{activeCategory}</h2>
-              <p className="mt-2 text-slate-500 text-sm">تصفح واختبر مسارات الـ API الخاصة بقسم {activeCategory}.</p>
-            </div>
+        /* Legacy Form Styles to match image */
+        .legacy-label {
+            font-weight: 700;
+            color: #1f2937;
+            width: 90px;
+            text-align: right;
+            padding-left: 10px;
+            font-size: 0.95rem;
+        }
+        .legacy-input {
+            border: 1px solid #cbd5e1;
+            padding: 4px 8px;
+            border-radius: 2px;
+            outline: none;
+            transition: border-color 0.2s;
+            height: 32px;
+        }
+        .legacy-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 1px #4f46e5;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
 
-            <div className="space-y-6">
-              {activeData.endpoints.map((ep, idx) => (
-                <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
-                  
-                  {/* ترويسة المسار */}
-                  <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-800">{ep.name}</h3>
-                      <p className="text-sm text-slate-500 mt-1.5">{ep.desc}</p>
-                    </div>
-                    <div className="flex items-center space-x-2 space-x-reverse bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm font-mono whitespace-nowrap overflow-x-auto shadow-inner" dir="ltr">
-                      <span className={`font-black ${ep.method === 'GET' ? 'text-blue-400' : 'text-emerald-400'}`}>{ep.method}</span>
-                      <span className="text-slate-400">|</span>
-                      <span>{ep.path}</span>
-                    </div>
-                  </div>
-
-                  {/* جسم المسار (Payload & Action) */}
-                  <div className="p-6">
-                    {ep.method === 'POST' && ep.payloadExample && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-bold text-slate-700 mb-2">البيانات المرسلة (JSON Payload)</label>
-                        <div className="relative">
-                          <textarea
-                            className="w-full font-mono text-sm p-4 border border-slate-200 rounded-xl bg-slate-800 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-inner"
-                            rows={ep.payloadExample.split('\n').length}
-                            value={payloads[ep.path] !== undefined ? payloads[ep.path] : ep.payloadExample}
-                            onChange={(e) => handlePayloadChange(ep.path, e.target.value)}
-                            spellCheck="false"
-                            dir="ltr"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col xl:flex-row gap-6 items-start">
-                      <button
-                        onClick={() => handleTestApi(ep)}
-                        disabled={loadingStates[ep.path]}
-                        className={`flex-shrink-0 flex items-center justify-center space-x-2 space-x-reverse px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all w-full xl:w-48 ${
-                          loadingStates[ep.path] 
-                            ? "bg-emerald-400 cursor-not-allowed" 
-                            : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-                        }`}
-                      >
-                        {loadingStates[ep.path] ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <>
-                            <Play className="w-5 h-5 fill-current" />
-                            <span>إرسال الطلب</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* صندوق الاستجابة المطور */}
-                      <div className="flex-1 w-full min-w-0">
-                        {responses[ep.path] && (
-                          <div className="bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700">
-                            {/* شريط أدوات الاستجابة */}
-                            <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">الاستجابة</span>
-                                <span className={`text-xs font-mono px-2 py-0.5 rounded ${responses[ep.path].ok ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                  {responses[ep.path].status} {responses[ep.path].statusText}
-                                </span>
-                              </div>
-                              <button 
-                                onClick={() => handleCopy(ep.path, responses[ep.path].data)}
-                                className="text-slate-400 hover:text-white p-1 rounded transition-colors flex items-center gap-1 text-xs"
-                                title="نسخ الرد"
-                              >
-                                {copiedPath === ep.path ? <><Check className="w-4 h-4 text-emerald-400"/> تم النسخ</> : <><Copy className="w-4 h-4"/> نسخ</>}
-                              </button>
-                            </div>
-                            {/* نص الاستجابة */}
-                            <div className="p-4 overflow-x-auto max-h-96 overflow-y-auto custom-scrollbar" dir="ltr">
-                              <pre className={`text-sm font-mono whitespace-pre-wrap break-words ${responses[ep.path].ok ? 'text-emerald-300' : 'text-red-300'}`}>
-                                {responses[ep.path].data}
-                              </pre>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </main>
-      </div>
-      
-      {/* ستايل لـ Scrollbar */}
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-      `}} />
+    <!-- Header Actions -->
+    <div class="max-w-7xl mx-auto mb-6 flex flex-wrap justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="ph ph-scooter text-indigo-600 text-3xl"></i>
+                Order Dispatch Entry
+            </h1>
+            <p class="text-sm text-gray-500 rtl-container text-right mt-1">نظام إدخال وتوصيل الطلبات الذكي</p>
+        </div>
+        <div class="flex gap-2 rtl-container">
+            <button onclick="saveCustomer()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm shadow-sm">
+                <i class="ph ph-floppy-disk text-lg"></i>
+                حفظ العميل
+            </button>
+            <button onclick="deleteCustomer()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm shadow-sm">
+                <i class="ph ph-trash text-lg"></i>
+                حذف العميل
+            </button>
+            <button onclick="clearForm()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm">
+                <i class="ph ph-eraser text-lg"></i>
+                تفريغ الحقول
+            </button>
+        </div>
     </div>
-  );
-}
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- ARABIC INPUT SECTION (Matches Image Layout) -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 rtl-container">
+            <div class="border-b border-gray-100 pb-4 mb-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="ph ph-keyboard"></i>
+                    بيانات العميل
+                </h2>
+                <div class="flex items-center gap-3">
+                    <span id="sheet-status" class="text-xs text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded">جاري سحب المناطق...</span>
+                    <span id="loading-indicator" class="hidden text-sm text-indigo-600 flex items-center gap-1 font-semibold">
+                        <i class="ph ph-spinner animate-spin"></i> جاري الترجمة...
+                    </span>
+                </div>
+            </div>
+
+            <!-- Legacy Form Container -->
+            <div class="bg-[#e5e7eb] p-4 rounded border border-gray-300 space-y-3">
+                
+                <!-- Building Type -->
+                <div class="flex justify-center gap-12 bg-white border border-gray-300 py-2 rounded mb-4">
+                    <label class="flex items-center gap-2 font-bold cursor-pointer">
+                        منزل <input type="radio" name="ar-btype" value="منزل" checked class="w-4 h-4 text-indigo-600">
+                    </label>
+                    <label class="flex items-center gap-2 font-bold cursor-pointer">
+                        محل <input type="radio" name="ar-btype" value="محل" class="w-4 h-4 text-indigo-600">
+                    </label>
+                    <label class="flex items-center gap-2 font-bold cursor-pointer">
+                        شركه <input type="radio" name="ar-btype" value="شركه" class="w-4 h-4 text-indigo-600">
+                    </label>
+                </div>
+
+                <!-- Name -->
+                <div class="flex items-center">
+                    <label class="legacy-label">الاسم</label>
+                    <input type="text" id="ar-name" class="legacy-input flex-1">
+                </div>
+
+                <!-- Street & House -->
+                <div class="flex items-center gap-4">
+                    <label class="legacy-label">اسم الشارع</label>
+                    <input type="text" id="ar-street" class="legacy-input flex-1">
+                    
+                    <label class="font-bold text-gray-800 whitespace-nowrap">رقم المنزل</label>
+                    <input type="text" id="ar-house" class="legacy-input w-24 text-center">
+                </div>
+
+                <!-- Description -->
+                <div class="flex items-start pt-1">
+                    <label class="legacy-label pt-2">وصف العنوان</label>
+                    <textarea id="ar-desc" rows="4" class="legacy-input flex-1 h-auto resize-none"></textarea>
+                </div>
+
+                <!-- Floor & Apt -->
+                <div class="flex items-center justify-end gap-6 pt-2">
+                    <div class="flex items-center gap-2">
+                        <label class="font-bold text-red-600 w-12 text-center">الشقه</label>
+                        <input type="text" id="ar-apt" class="legacy-input w-24 text-center">
+                    </div>
+                    <div class="flex items-center gap-2 pr-12">
+                        <label class="font-bold text-red-600 w-12 text-center">الدور</label>
+                        <input type="text" id="ar-floor" class="legacy-input w-24 text-center">
+                    </div>
+                </div>
+
+                <!-- Phones -->
+                <div class="flex items-center gap-4 pt-2">
+                    <label class="legacy-label">التليفون 1</label>
+                    <input type="text" id="ar-phone1" class="legacy-input flex-1 text-center" dir="ltr" value="0">
+                    
+                    <label class="font-bold text-gray-800">التليفون 2</label>
+                    <input type="text" id="ar-phone2" class="legacy-input flex-1 text-center" dir="ltr">
+                </div>
+
+                <!-- Mobile -->
+                <div class="flex items-center">
+                    <label class="legacy-label">موبايل</label>
+                    <input type="text" id="ar-mobile" class="legacy-input w-1/2 text-left" dir="ltr" placeholder="بحث بالرقم...">
+                </div>
+
+                <!-- Area & Service -->
+                <div class="flex items-center gap-2 pt-2 relative">
+                    <label class="legacy-label">المنطقة</label>
+                    
+                    <div class="flex-1 flex gap-1 relative">
+                        <input type="text" id="ar-area" class="legacy-input flex-1" autocomplete="off">
+                        <button class="bg-gray-300 px-3 rounded border border-gray-400 font-bold hover:bg-gray-400 transition" title="عرض المناطق">...</button>
+                        
+                        <!-- Suggestions Dropdown -->
+                        <div id="area-suggestions" class="absolute top-full left-0 right-8 bg-white border border-gray-400 rounded-sm shadow-xl hidden max-h-48 overflow-y-auto mt-1 z-50"></div>
+                    </div>
+
+                    <label class="font-bold text-gray-800 ml-2">خدمة</label>
+                    <input type="number" step="0.1" id="ar-service" class="legacy-input w-20 text-center" value="0">
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ENGLISH OUTPUT SECTION -->
+        <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6 ltr-container flex flex-col">
+            <div class="border-b border-gray-200 pb-4 mb-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="ph ph-translate"></i>
+                    English Output
+                </h2>
+                <button onclick="copyFullAddress()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm shadow-sm">
+                    <i class="ph ph-copy text-lg"></i>
+                    Copy Full Address
+                </button>
+            </div>
+
+            <div class="space-y-3 flex-grow">
+                <!-- Helper to generate output fields -->
+                <script>
+                    const fields = [
+                        { id: 'en-btype', label: 'Building Type' },
+                        { id: 'en-name', label: 'Name' },
+                        { id: 'en-mobile', label: 'Mobile' },
+                        { id: 'en-phones', label: 'Phones' },
+                        { id: 'en-area', label: 'Area' },
+                        { id: 'en-street', label: 'Street' },
+                        { id: 'en-house', label: 'House / Bldg' },
+                        { id: 'en-floor-apt', label: 'Floor & Apt' },
+                        { id: 'en-desc', label: 'Description', isTextArea: true }
+                    ];
+
+                    fields.forEach(f => {
+                        const inputHTML = f.isTextArea 
+                            ? `<textarea id="${f.id}" readonly rows="2" class="w-full bg-white border border-gray-200 rounded-l-md px-3 py-2 text-gray-700 focus:outline-none"></textarea>`
+                            : `<input type="text" id="${f.id}" readonly class="w-full bg-white border border-gray-200 rounded-l-md px-3 py-2 text-gray-700 focus:outline-none">`;
+                        
+                        document.write(`
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">${f.label}</label>
+                                <div class="flex">
+                                    ${inputHTML}
+                                    <button onclick="copySingleField('${f.id}')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-r-md border border-l-0 border-gray-200 transition" title="Copy">
+                                        <i class="ph ph-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `);
+                    });
+                </script>
+
+                <!-- Delivery Price Display -->
+                <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex justify-between items-center shadow-inner">
+                    <div>
+                        <span class="block text-sm font-semibold text-green-800">Delivery Price (Service)</span>
+                        <div class="text-2xl font-bold text-green-600">
+                            <span id="en-price">0.0</span> <span class="text-lg">OMR</span>
+                        </div>
+                    </div>
+                    <i class="ph ph-money text-4xl text-green-300"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 ltr-container"></div>
+
+    <script>
+        // --- DATA DICTIONARY (Will be populated from Google Sheets) ---
+        let areasDB = [];
+
+        // --- GOOGLE SHEETS FETCHING LOGIC ---
+        // We use the CSV export link of the published sheet to avoid CORS & HTML parsing issues
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQaP80Ppg2kfYyqpWhdxIChD-2I_2QvC8a1ujpgd8NtXGtI6pvm3f2a-o6e6LIfVGpJ6VUik8M7zKR7/pub?gid=810256556&single=true&output=csv';
+
+        async function fetchAreasFromSheet() {
+            try {
+                const response = await fetch(SHEET_CSV_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const text = await response.text();
+                
+                // Parse CSV text
+                const rows = text.split('\n').map(row => row.trim()).filter(row => row.length > 0);
+                
+                areasDB = [];
+                // Assuming Row 0 is Headers, starting from Row 1
+                for (let i = 1; i < rows.length; i++) {
+                    // Split handling simple commas (assuming no commas inside the area names)
+                    const cols = rows[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                    
+                    if (cols.length >= 2) {
+                        // Intelligent Column Guessing:
+                        // Arabic name usually in Col 0. 
+                        // Price might be Col 1 or Col 2.
+                        let arName = cols[0];
+                        let enName = "";
+                        let price = 0;
+
+                        // Check if Col 1 is a number (Price)
+                        if (!isNaN(parseFloat(cols[1]))) {
+                            price = parseFloat(cols[1]);
+                            enName = arName; // No english name provided
+                        } 
+                        // Check if Col 2 is a number (Arabic, English, Price)
+                        else if (cols.length >= 3 && !isNaN(parseFloat(cols[2]))) {
+                            enName = cols[1];
+                            price = parseFloat(cols[2]);
+                        } else {
+                            enName = cols[1] || arName;
+                        }
+
+                        if (arName) {
+                            areasDB.push({ ar: arName, en: enName, price: price });
+                        }
+                    }
+                }
+                
+                // Update UI Status
+                const statusEl = $('sheet-status');
+                statusEl.textContent = `تم تحميل ${areasDB.length} منطقة ✔️`;
+                statusEl.className = 'text-xs text-green-700 font-bold bg-green-100 px-2 py-1 rounded';
+                
+            } catch (error) {
+                console.error("Sheet Fetch Error:", error);
+                const statusEl = $('sheet-status');
+                statusEl.textContent = '❌ فشل الاتصال بالشيت';
+                statusEl.className = 'text-xs text-red-700 font-bold bg-red-100 px-2 py-1 rounded';
+                showToast("لا يمكن سحب بيانات المناطق، تأكد من أن الشيت منشور كملف ويب.", "error");
+            }
+        }
+
+        // --- UTILITIES ---
+        const $ = id => document.getElementById(id);
+        const getVal = id => $(id).value.trim();
+        const setVal = (id, val) => { if($(id)) $(id).value = val; };
+
+        function showToast(message, type = 'success') {
+            const container = $('toast-container');
+            const toast = document.createElement('div');
+            const colors = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            const icon = type === 'success' ? 'ph-check-circle' : (type === 'error' ? 'ph-warning-circle' : 'ph-info');
+            
+            toast.className = `toast-animate ${colors} text-white px-4 py-3 rounded shadow-lg flex items-center gap-3 min-w-[250px]`;
+            toast.innerHTML = `<i class="ph ${icon} text-xl"></i> <span class="font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- TRANSLATION LOGIC ---
+        let activeRequests = 0;
+        async function translateText(text) {
+            if (!text) return '';
+            if (/^[\d\s\-\+\(\)\.,]+$/.test(text)) return text;
+
+            try {
+                activeRequests++;
+                $('loading-indicator').classList.remove('hidden');
+                
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                activeRequests--;
+                if (activeRequests === 0) $('loading-indicator').classList.add('hidden');
+                
+                if (data && data[0]) return data[0].map(item => item[0]).join('');
+                return text;
+            } catch (error) {
+                console.error("Translation Error:", error);
+                activeRequests--;
+                if (activeRequests === 0) $('loading-indicator').classList.add('hidden');
+                return text; 
+            }
+        }
+
+        function debounce(func, timeout = 500){
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => { func.apply(this, args); }, timeout);
+            };
+        }
+
+        // --- FIELD MAPPINGS & UPDATES ---
+        
+        // Building Type Radio Buttons
+        const radioBtns = document.querySelectorAll('input[name="ar-btype"]');
+        const updateBType = () => {
+            const selected = document.querySelector('input[name="ar-btype"]:checked').value;
+            const enType = selected === 'منزل' ? 'Home' : (selected === 'محل' ? 'Shop' : 'Company');
+            setVal('en-btype', enType);
+        };
+        radioBtns.forEach(btn => btn.addEventListener('change', updateBType));
+        updateBType(); // Initial call
+
+        // Phones & Mobile
+        $('ar-mobile').addEventListener('input', () => {
+            setVal('en-mobile', getVal('ar-mobile'));
+            checkCustomerDB(getVal('ar-mobile'));
+        });
+        
+        const updatePhones = () => {
+            let p1 = getVal('ar-phone1');
+            let p2 = getVal('ar-phone2');
+            let phones = [];
+            if(p1 && p1 !== "0") phones.push(p1);
+            if(p2) phones.push(p2);
+            setVal('en-phones', phones.join(' / '));
+        };
+        $('ar-phone1').addEventListener('input', updatePhones);
+        $('ar-phone2').addEventListener('input', updatePhones);
+
+        // Floor & Apt
+        const updateFloorApt = debounce(async () => {
+            let floorAr = getVal('ar-floor');
+            let aptAr = getVal('ar-apt');
+            let floorEn = floorAr ? await translateText(floorAr) : '';
+            let aptEn = aptAr ? await translateText(aptAr) : '';
+            
+            let result = [];
+            if(floorEn) result.push(`Floor: ${floorEn}`);
+            if(aptEn) result.push(`Apt: ${aptEn}`);
+            setVal('en-floor-apt', result.join(' | '));
+        }, 500);
+        $('ar-floor').addEventListener('input', updateFloorApt);
+        $('ar-apt').addEventListener('input', updateFloorApt);
+
+        // Service Price sync
+        $('ar-service').addEventListener('input', () => {
+            $('en-price').textContent = getVal('ar-service') || '0.0';
+        });
+
+        // Translated Text Fields
+        const setupTranslatedField = (arId, enId) => {
+            $(arId).addEventListener('input', debounce(async () => {
+                let text = getVal(arId);
+                let translated = await translateText(text);
+                setVal(enId, translated);
+            }, 600));
+        };
+        setupTranslatedField('ar-name', 'en-name');
+        setupTranslatedField('ar-street', 'en-street');
+        setupTranslatedField('ar-house', 'en-house');
+        setupTranslatedField('ar-desc', 'en-desc');
+
+
+        // --- AREA AUTOCOMPLETE LOGIC ---
+        const arAreaInput = $('ar-area');
+        const areaSuggestions = $('area-suggestions');
+        const normalizeAr = (text) => text.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ي$/g, 'ى');
+
+        arAreaInput.addEventListener('input', debounce(async () => {
+            const query = getVal('ar-area').toLowerCase();
+            const queryNorm = normalizeAr(query);
+            areaSuggestions.innerHTML = '';
+            
+            if (!query) {
+                areaSuggestions.classList.add('hidden');
+                setVal('en-area', '');
+                return;
+            }
+
+            const matches = areasDB.filter(a => 
+                a.ar.includes(query) || normalizeAr(a.ar).includes(queryNorm)
+            );
+
+            if (matches.length > 0) {
+                matches.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'px-3 py-2 hover:bg-indigo-100 cursor-pointer border-b border-gray-200 flex justify-between items-center text-sm';
+                    div.innerHTML = `<span>${match.ar}</span> <span class="text-indigo-600 font-bold">${match.price}</span>`;
+                    div.onclick = () => selectArea(match);
+                    areaSuggestions.appendChild(div);
+                });
+                areaSuggestions.classList.remove('hidden');
+            } else {
+                areaSuggestions.classList.add('hidden');
+                let translated = await translateText(query);
+                setVal('en-area', translated);
+            }
+        }, 300));
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target !== arAreaInput && e.target !== areaSuggestions) {
+                areaSuggestions.classList.add('hidden');
+            }
+        });
+
+        function selectArea(areaObj) {
+            setVal('ar-area', areaObj.ar);
+            setVal('en-area', areaObj.en);
+            setVal('ar-service', areaObj.price); // Update Arabic service input
+            $('en-price').textContent = areaObj.price; // Update English price display
+            areaSuggestions.classList.add('hidden');
+        }
+
+
+        // --- LOCAL STORAGE CUSTOMER DB ---
+        const DB_KEY = 'delivery_customers';
+
+        function getDB() {
+            try { return JSON.parse(localStorage.getItem(DB_KEY)) || {}; } 
+            catch(e) { return {}; }
+        }
+
+        function checkCustomerDB(mobileNum) {
+            if (!mobileNum || mobileNum.length < 5) return;
+            const db = getDB();
+            if (db[mobileNum]) {
+                const c = db[mobileNum];
+                
+                // Set building type radio
+                if(c.btype) {
+                    const radio = document.querySelector(`input[name="ar-btype"][value="${c.btype}"]`);
+                    if(radio) radio.checked = true;
+                    updateBType();
+                }
+
+                setVal('ar-phone1', c.phone1 || '0');
+                setVal('ar-phone2', c.phone2 || '');
+                setVal('ar-name', c.name || '');
+                setVal('ar-area', c.area || '');
+                setVal('ar-street', c.street || '');
+                setVal('ar-house', c.house || '');
+                setVal('ar-floor', c.floor || '');
+                setVal('ar-apt', c.apt || '');
+                setVal('ar-desc', c.desc || '');
+                setVal('ar-service', c.service || '0');
+
+                showToast(`تم إيجاد العميل: ${c.name}`, 'info');
+                forceTranslateAll();
+            }
+        }
+
+        function saveCustomer() {
+            const mobile = getVal('ar-mobile');
+            if (!mobile) {
+                showToast("الرجاء إدخال رقم الموبايل أولاً", 'error');
+                return;
+            }
+
+            const db = getDB();
+            if(db[mobile]) {
+                if(!confirm('هذا العميل مسجل بالفعل، هل تريد تحديث بياناته؟')) return;
+            }
+
+            db[mobile] = {
+                btype: document.querySelector('input[name="ar-btype"]:checked').value,
+                name: getVal('ar-name'),
+                phone1: getVal('ar-phone1'),
+                phone2: getVal('ar-phone2'),
+                area: getVal('ar-area'),
+                street: getVal('ar-street'),
+                house: getVal('ar-house'),
+                floor: getVal('ar-floor'),
+                apt: getVal('ar-apt'),
+                desc: getVal('ar-desc'),
+                service: getVal('ar-service')
+            };
+
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            showToast("تم الحفظ بنجاح!", "success");
+        }
+
+        function deleteCustomer() {
+            const mobile = getVal('ar-mobile');
+            if (!mobile) return;
+            const db = getDB();
+            if (db[mobile]) {
+                if(confirm('هل أنت متأكد من حذف هذا العميل؟')) {
+                    delete db[mobile];
+                    localStorage.setItem(DB_KEY, JSON.stringify(db));
+                    clearForm();
+                    showToast("تم حذف العميل!", "success");
+                }
+            } else {
+                showToast("العميل غير موجود", "error");
+            }
+        }
+
+        function clearForm() {
+            const inputs = document.querySelectorAll('input[type="text"], textarea');
+            inputs.forEach(input => input.value = '');
+            
+            // Resets
+            document.querySelector('input[name="ar-btype"][value="منزل"]').checked = true;
+            updateBType();
+            setVal('ar-phone1', '0');
+            setVal('ar-service', '0');
+            $('en-price').textContent = '0.0';
+            $('loading-indicator').classList.add('hidden');
+        }
+
+        async function forceTranslateAll() {
+            setVal('en-mobile', getVal('ar-mobile'));
+            updatePhones();
+            $('en-price').textContent = getVal('ar-service') || '0.0';
+            
+            const areaVal = getVal('ar-area');
+            const areaNorm = normalizeAr(areaVal);
+            const match = areasDB.find(a => a.ar === areaVal || normalizeAr(a.ar) === areaNorm);
+            if(match) setVal('en-area', match.en);
+            else setVal('en-area', await translateText(areaVal));
+
+            setVal('en-name', await translateText(getVal('ar-name')));
+            setVal('en-street', await translateText(getVal('ar-street')));
+            setVal('en-house', await translateText(getVal('ar-house')));
+            setVal('en-desc', await translateText(getVal('ar-desc')));
+            updateFloorApt();
+        }
+
+        // --- COPY FUNCTIONS ---
+        function copyText(text) {
+            if (!text) return showToast("لا يوجد شيء لنسخه!", "error");
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("تم النسخ!");
+            } catch (err) {
+                showToast("فشل النسخ", "error");
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function copySingleField(id) { copyText(getVal(id)); }
+
+        function copyFullAddress() {
+            const lines = [
+                `Type: ${getVal('en-btype')}`,
+                `Name: ${getVal('en-name')}`,
+                `Mobile: ${getVal('en-mobile')}`,
+                getVal('en-phones') && getVal('en-phones') !== '0' ? `Alt Phone: ${getVal('en-phones')}` : '',
+                `Area: ${getVal('en-area')}`,
+                getVal('en-street') ? `Street: ${getVal('en-street')}` : '',
+                getVal('en-house') ? `House/Bldg: ${getVal('en-house')}` : '',
+                getVal('en-floor-apt') ? `${getVal('en-floor-apt')}` : '',
+                getVal('en-desc') ? `Notes: ${getVal('en-desc')}` : '',
+                `------------------`,
+                `Delivery Price: ${$('en-price').textContent} OMR`
+            ];
+            const fullAddress = lines.filter(line => line.trim() !== '').join('\n');
+            copyText(fullAddress);
+        }
+
+        // Initialization
+        window.onload = () => {
+            fetchAreasFromSheet();
+        };
+
+    </script>
+</body>
+</html>
